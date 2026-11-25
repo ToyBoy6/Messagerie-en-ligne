@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messagerie</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f3f4f6;
+  color: #202124;
+}
+
+button, input { font: inherit; }
+
+button {
+  cursor: pointer;
+  border: 0;
+  border-radius: 6px;
+  padding: 11px 15px;
+  background: #2457d6;
+  color: white;
+}
+
+button:hover { background: #1946b5; }
+
+input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  outline: none;
+  background: white;
+}
+
+input:focus { border-color: #2457d6; }
+
+.hidden { display: none !important; }
+
+#auth {
+  max-width: 380px;
+  margin: 70px auto;
+  padding: 25px;
+  background: white;
+  border: 1px solid #e1e3e8;
+  border-radius: 9px;
+}
+
+#auth h1 { margin-top: 0; }
+
+#auth input { margin-bottom: 12px; }
+
+#auth button { width: 100%; }
+
+#authSwitch {
+  margin-top: 15px;
+  text-align: center;
+  color: #2457d6;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+#app {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  height: 58px;
+  flex-shrink: 0;
+  background: white;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+}
+
+header h2 { font-size: 19px; }
+
+#layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+#sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: white;
+  border-right: 1px solid #ddd;
+  overflow-y: auto;
+}
+
+.sectionTitle {
+  padding: 17px;
+  font-weight: bold;
+  border-bottom: 1px solid #eee;
+}
+
+.user {
+  padding: 15px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+}
+
+.user:hover, .user.active {
+  background: #edf2ff;
+}
+
+.userName { font-weight: bold; }
+
+.userStatus {
+  font-size: 12px;
+  color: #777;
+  margin-top: 4px;
+}
+
+#chat {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#chatHeader {
+  background: white;
+  border-bottom: 1px solid #ddd;
+  padding: 17px;
+  font-weight: bold;
+}
+
+#messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.message {
+  max-width: 75%;
+  width: fit-content;
+  background: white;
+  border: 1px solid #e1e3e8;
+  padding: 10px 13px;
+  border-radius: 9px;
+  overflow-wrap: anywhere;
+}
+
+.message.mine {
+  align-self: flex-end;
+  background: #2457d6;
+  color: white;
+  border-color: #2457d6;
+}
+
+.messageTime {
+  font-size: 10px;
+  opacity: .7;
+  margin-top: 5px;
+  text-align: right;
+}
+
+#sendArea {
+  background: white;
+  border-top: 1px solid #ddd;
+  padding: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+#messageInput { flex: 1; }
+
+#empty {
+  margin: auto;
+  text-align: center;
+  color: #777;
+  padding: 20px;
+}
+
+#notice {
+  font-size: 13px;
+  color: #b42318;
+  margin-top: 12px;
+  white-space: pre-wrap;
+}
+
+@media(max-width:600px) {
+  #sidebar { width: 115px; }
+  .user { padding: 12px 8px; }
+  .userName { font-size: 13px; }
+  .userStatus { font-size: 10px; }
+  header { padding: 0 10px; }
+  header h2 { font-size: 16px; }
+  .message { max-width: 90%; }
+}
+</style>
+</head>
+
+<body>
+
+<!-- CONNEXION -->
+<div id="auth">
+  <h1>Messagerie</h1>
+  <p id="authTitle">Connexion à votre compte</p>
+
+  <div id="registerFields" class="hidden">
+    <input id="pseudo" placeholder="Votre pseudonyme" maxlength="30">
+  </div>
+
+  <input id="email" type="email" placeholder="Adresse e-mail">
+  <input id="password" type="password" placeholder="Mot de passe">
+
+  <button id="authButton">Se connecter</button>
+  <div id="authSwitch">Créer un compte</div>
+  <div id="notice"></div>
+</div>
+
+<!-- APPLICATION -->
+<div id="app" class="hidden">
+
+<header>
+  <h2>Messagerie</h2>
+  <button id="logout">Déconnexion</button>
+</header>
+
+<div id="layout">
+
+  <aside id="sidebar">
+    <div class="sectionTitle">Contacts</div>
+    <div id="users"></div>
+  </aside>
+
+  <main id="chat">
+
+    <div id="chatHeader">Sélectionnez un contact</div>
+
+    <div id="messages">
+      <div id="empty">
+        Choisissez un utilisateur pour commencer une conversation.
+      </div>
+    </div>
+
+    <form id="sendArea" class="hidden">
+      <input id="messageInput"
+        placeholder="Écrire un message..."
+        maxlength="2000"
+        autocomplete="off">
+      <button type="submit">Envoyer</button>
+    </form>
+
+  </main>
+</div>
+</div>
+
+<script type="module">
+
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
+
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js";
+
+import {
+  getDatabase,
+  ref,
+  set,
+  get,
+  push,
+  onValue,
+  serverTimestamp,
+  query,
+  orderByChild,
+  limitToLast
+} from "https://www.gstatic.com/firebasejs/13.4.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBFD8LHUmpFdJh77yWPMTEldLBjQVu0mpM",
+  authDomain: "discussions-leboncoin.firebaseapp.com",
+  databaseURL: "https://discussions-leboncoin-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "discussions-leboncoin",
+  storageBucket: "discussions-leboncoin.firebasestorage.app",
+  messagingSenderId: "553632034516",
+  appId: "1:553632034516:web:d575b0f75c4bad1a395541",
+  measurementId: "G-CD84D2BK0V"
+};
+
+const appFirebase = initializeApp(firebaseConfig);
+const auth = getAuth(appFirebase);
+const db = getDatabase(appFirebase);
+
+// ELEMENTS
+const authScreen = document.getElementById("auth");
+const appScreen = document.getElementById("app");
+const notice = document.getElementById("notice");
+
+let registerMode = false;
+let currentUser = null;
+let selectedUser = null;
+let activeChat = null;
+let stopMessages = null;
+let stopUsers = null;
+
+// AUTHENTIFICATION
+
+document.getElementById("authSwitch").onclick = () => {
+  registerMode = !registerMode;
+
+  document.getElementById("registerFields")
+    .classList.toggle("hidden", !registerMode);
+
+  document.getElementById("authTitle").textContent =
+    registerMode ? "Créer un compte" : "Connexion à votre compte";
+
+  document.getElementById("authButton").textContent =
+    registerMode ? "Créer mon compte" : "Se connecter";
+
+  document.getElementById("authSwitch").textContent =
+    registerMode ? "Déjà inscrit ? Se connecter" : "Créer un compte";
+
+  notice.textContent = "";
+};
+
+document.getElementById("authButton").onclick = async () => {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const pseudo = document.getElementById("pseudo").value.trim();
+
+  notice.textContent = "";
+
+  try {
+    if (registerMode) {
+      if (pseudo.length < 2) {
+        throw new Error("Le pseudonyme doit contenir au moins 2 caractères.");
+      }
+
+      if (password.length < 6) {
+        throw new Error("Le mot de passe doit contenir au moins 6 caractères.");
+      }
+
+      const result = await createUserWithEmailAndPassword(
+        auth, email, password
+      );
+
+      await set(ref(db, "users/" + result.user.uid), {
+        pseudo: pseudo,
+        createdAt: serverTimestamp()
+      });
+
+    } else {
+      await signInWithEmailAndPassword(auth, email, password);
+    }
+
+  } catch (error) {
+    notice.textContent = error.message;
+  }
+};
+
+document.getElementById("logout").onclick = () => signOut(auth);
+
+// UTILISATEUR CONNECTÉ
+
+onAuthStateChanged(auth, async user => {
+  currentUser = user;
+
+  if (stopUsers) {
+    stopUsers();
+    stopUsers = null;
+  }
+
+  if (!user) {
+    authScreen.classList.remove("hidden");
+    appScreen.classList.add("hidden");
+    return;
+  }
+
+  authScreen.classList.add("hidden");
+  appScreen.classList.remove("hidden");
+
+  const profileRef = ref(db, "users/" + user.uid);
+  const profile = await get(profileRef);
+
+  if (!profile.exists()) {
+    await set(profileRef, {
+      pseudo: user.email.split("@")[0],
+      createdAt: serverTimestamp()
+    });
+  }
+
+  loadUsers();
+});
+
+// CHARGEMENT DES CONTACTS
+
+function loadUsers() {
+  stopUsers = onValue(ref(db, "users"), snapshot => {
+    const container = document.getElementById("users");
+    container.replaceChildren();
+
+    snapshot.forEach(child => {
+      const uid = child.key;
+      const data = child.val();
+
+      if (uid === currentUser.uid) return;
+
+      const item = document.createElement("div");
+      item.className = "user" +
+        (selectedUser === uid ? " active" : "");
+
+      const name = document.createElement("div");
+      name.className = "userName";
+      name.textContent = data.pseudo || "Utilisateur";
+
+      const status = document.createElement("div");
+      status.className = "userStatus";
+      status.textContent = "Disponible";
+
+      item.append(name, status);
+
+      item.onclick = () => openChat(uid, data.pseudo || "Utilisateur");
+
+      container.appendChild(item);
+    });
+  });
+}
+
+// IDENTIFIANT UNIQUE DE CONVERSATION
+
+function chatIdFor(uid1, uid2) {
+  return [uid1, uid2].sort().join("_");
+}
+
+// OUVERTURE D'UNE CONVERSATION
+
+async function openChat(uid, pseudo) {
+  selectedUser = uid;
+
+  document.querySelectorAll(".user").forEach(item => {
+    item.classList.remove("active");
+  });
+
+  const chatId = chatIdFor(currentUser.uid, uid);
+  const chatRef = ref(db, "chats/" + chatId);
+
+  try {
+    const existing = await get(chatRef);
+
+    if (!existing.exists()) {
+      await set(chatRef, {
+        members: {
+          [currentUser.uid]: true,
+          [uid]: true
+        },
+        createdAt: serverTimestamp()
+      });
+    }
+
+    // Index de la conversation pour les deux utilisateurs
+    await Promise.all([
+      set(ref(db, `userChats/${currentUser.uid}/${chatId}`), true),
+      set(ref(db, `userChats/${uid}/${chatId}`), true)
+    ]);
+
+    activeChat = chatId;
+
+    document.getElementById("chatHeader").textContent = pseudo;
+    document.getElementById("sendArea").classList.remove("hidden");
+
+    if (stopMessages) stopMessages();
+
+    loadMessages(chatId);
+
+  } catch (error) {
+    notice.textContent = "Impossible d'ouvrir la conversation : " + error.message;
+  }
+}
+
+// AFFICHAGE DES MESSAGES
+
+function loadMessages(chatId) {
+  const container = document.getElementById("messages");
+
+  const messagesQuery = query(
+    ref(db, "chats/" + chatId + "/messages"),
+    orderByChild("createdAt"),
+    limitToLast(100)
+  );
+
+  stopMessages = onValue(messagesQuery, snapshot => {
+    container.replaceChildren();
+
+    if (!snapshot.exists()) {
+      const empty = document.createElement("div");
+      empty.id = "empty";
+      empty.textContent = "Aucun message. Commencez la discussion !";
+      container.appendChild(empty);
+      return;
+    }
+
+    snapshot.forEach(child => {
+      const data = child.val();
+
+      const message = document.createElement("div");
+      message.className = "message" +
+        (data.senderId === currentUser.uid ? " mine" : "");
+
+      const content = document.createElement("div");
+      content.textContent = data.text || "";
+
+      const time = document.createElement("div");
+      time.className = "messageTime";
+
+      time.textContent = data.createdAt
+        ? new Date(data.createdAt).toLocaleTimeString("fr-FR", {
+            hour: "2-digit",
+            minute: "2-digit"
+          })
+        : "Envoi...";
+
+      message.append(content, time);
+      container.appendChild(message);
+    });
+
+    container.scrollTop = container.scrollHeight;
+  });
+}
+
+// ENVOI D'UN MESSAGE
+
+document.getElementById("sendArea").onsubmit = async event => {
+  event.preventDefault();
+
+  if (!activeChat) return;
+
+  const input = document.getElementById("messageInput");
+  const text = input.value.trim();
+
+  if (!text) return;
+
+  input.value = "";
+
+  try {
+    const messagesRef = ref(db, "chats/" + activeChat + "/messages");
+
+    await set(push(messagesRef), {
+      text: text,
+      senderId: currentUser.uid,
+      createdAt: serverTimestamp()
+    });
+
+  } catch (error) {
+    input.value = text;
+    notice.textContent = "Erreur d'envoi : " + error.message;
+  }
+};
+
+</script>
+</body>
+</html>
